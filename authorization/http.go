@@ -75,6 +75,7 @@ func WithLogsStreamSelectorsExtractor(logger log.Logger, selectorNames []string)
 	for _, l := range selectorNames {
 		selectorNameMap[l] = true
 	}
+	selectorNameMap["log_type"] = true
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -168,7 +169,7 @@ func WithAuthorizers(authorizers map[string]rbac.Authorizer, permission rbac.Per
 			if !ok {
 				switch statusCode {
 				case http.StatusForbidden:
-					httperr.PrometheusAPIError(w, errorMessageForbidden, statusCode)
+					httperr.PrometheusAPIError(w, data, statusCode)
 				default:
 					msg := fmt.Sprintf("%d %s", statusCode, http.StatusText(statusCode))
 					httperr.PrometheusAPIError(w, msg, statusCode)

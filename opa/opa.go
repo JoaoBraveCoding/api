@@ -195,14 +195,35 @@ func (a *restAuthorizer) Authorize(
 			return http.StatusForbidden, false, ""
 		}
 
-		allowed, err = strconv.ParseBool(allow.(string))
-		if err != nil {
-			level.Error(a.logger).Log("msg", "received a malformed OPA response")
-
+		switch v := allow.(type) {
+		case bool:
+			allowed = v
+		case string:
+			allowed, err = strconv.ParseBool(v)
+			if err != nil {
+				level.Error(a.logger).Log("msg", "received a malformed OPA response, 'allowed' is not a boolean string")
+				return http.StatusForbidden, false, ""
+			}
+		default:
+			level.Error(a.logger).Log("msg", "received a malformed OPA response, 'allowed' is not a bool or string")
 			return http.StatusForbidden, false, ""
 		}
 
-		data = res["data"].(string)
+		if !allowed {
+			if reasons, ok := res["deny_reasons"]; ok {
+				if reasonsMap, ok := reasons.(map[string]interface{}); ok {
+					var reasonParts []string
+					for r := range reasonsMap {
+						reasonParts = append(reasonParts, r)
+					}
+					data = fmt.Sprintf("%v", reasonParts)
+				}
+			}
+		} else if dataVal, ok := res["data"]; ok {
+			if dataStr, ok := dataVal.(string); ok {
+				data = dataStr
+			}
+		}
 
 	default:
 		level.Error(a.logger).Log("msg", "received a malformed OPA response")
